@@ -2,8 +2,10 @@
 using System.Collections.ObjectModel;
 using System.Collections.Specialized;
 using System.Reactive.Linq;
+
 using ReactiveUI;
 using ReactiveUI.SourceGenerators;
+
 using TeacherApp.Models;
 using TeacherApp.Services;
 
@@ -11,22 +13,21 @@ namespace TeacherApp.ViewModels;
 
 public partial class MainWindowViewModel : ViewModelBase
 {
-    public ObservableCollection<Teacher> Teachers { get; }
-
-    [Reactive] private Teacher? _selectedTeacher;
-    [Reactive] private Guid? _id;
-    [Reactive] private string? _lastName;
-    [Reactive] private string? _firstName;
-    [Reactive] private ObservableCollection<string> _subjects = [];
-    
-    [Reactive] private string _newSubjectName = string.Empty;
-    [Reactive] private string _subjectNameToRemove = string.Empty;
+    private readonly IObservable<bool> _canClear;
+    private readonly IObservable<bool> _canDelete;
 
     private readonly IObservable<bool> _canSave;
-    private readonly IObservable<bool> _canDelete;
-    private readonly IObservable<bool> _canClear;
-    
+
     private readonly JsonDataService _jsonDataService = new("teachers.json");
+    [Reactive] private string? _firstName;
+    [Reactive] private Guid? _id;
+    [Reactive] private string? _lastName;
+
+    [Reactive] private string _newSubjectName = string.Empty;
+
+    [Reactive] private Teacher? _selectedTeacher;
+    [Reactive] private string _subjectNameToRemove = string.Empty;
+    [Reactive] private ObservableCollection<string> _subjects = [];
 
     public MainWindowViewModel()
     {
@@ -37,19 +38,26 @@ public partial class MainWindowViewModel : ViewModelBase
                 LastName = st?.LastName;
                 FirstName = st?.FirstName;
                 Subjects.Clear();
-                if (st?.Subjects == null) return;
-                foreach (var subject in st.Subjects)
+                if (st?.Subjects == null)
+                {
+                    return;
+                }
+
+                foreach (string subject in st.Subjects)
+                {
                     Subjects.Add(subject);
+                }
             });
-        
-        var collection = _jsonDataService.LoadData<Teacher>();
-       
+
+        ObservableCollection<Teacher>? collection = _jsonDataService.LoadData<Teacher>();
+
         Teachers = collection is not null
             ? new ObservableCollection<Teacher>(collection)
             : [];
-        
-        var subjectsCount = this.WhenAnyValue(x => x.Subjects)
-            .Select(subjects => Observable.FromEventPattern<NotifyCollectionChangedEventHandler, NotifyCollectionChangedEventArgs>(
+
+        IObservable<int> subjectsCount = this.WhenAnyValue(x => x.Subjects)
+            .Select(subjects => Observable
+                .FromEventPattern<NotifyCollectionChangedEventHandler, NotifyCollectionChangedEventArgs>(
                     h => subjects.CollectionChanged += h,
                     h => subjects.CollectionChanged -= h)
                 .Select(_ => subjects.Count)
@@ -69,17 +77,19 @@ public partial class MainWindowViewModel : ViewModelBase
 
         _canSave = this.WhenAnyValue(
                 p => p.LastName,
-                p=> p.FirstName,
+                p => p.FirstName,
                 (lastName, firstName) => new { lastName, firstName })
             .CombineLatest(subjectsCount, (names, count) =>
                 !string.IsNullOrWhiteSpace(names.lastName) &&
                 !string.IsNullOrEmpty(names.firstName) &&
                 count > 0);
-        
+
         _canDelete = this.WhenAnyValue(p => p.SelectedTeacher)
             .Select(sp => sp is not null);
         Console.WriteLine($"Teachers count after load: {Teachers.Count}");
     }
+
+    public ObservableCollection<Teacher> Teachers { get; }
 
     public void SaveTeachersToFile()
     {
@@ -110,49 +120,51 @@ public partial class MainWindowViewModel : ViewModelBase
     {
         if (SelectedTeacher is not null)
         {
-            var updatedTeacher = SelectedTeacher with
+            Teacher updatedTeacher = SelectedTeacher with
             {
-                LastName = LastName!,
-                FirstName = FirstName!,
-                Subjects = new ObservableCollection<string>(Subjects)
+                LastName = LastName!, FirstName = FirstName!, Subjects = new ObservableCollection<string>(Subjects)
             };
-            var index = Teachers.IndexOf(SelectedTeacher);
+            int index = Teachers.IndexOf(SelectedTeacher);
             Teachers[index] = updatedTeacher;
             SelectedTeacher = updatedTeacher;
         }
         else
         {
-            var newTeacher = new Teacher
+            Teacher newTeacher = new()
             {
-                LastName = LastName!,
-                FirstName = FirstName!,
-                Subjects = new ObservableCollection<string>(Subjects)
+                LastName = LastName!, FirstName = FirstName!, Subjects = new ObservableCollection<string>(Subjects)
             };
             Teachers.Add(newTeacher);
             SelectedTeacher = newTeacher;
         }
     }
-    
+
     [ReactiveCommand]
     private void AddSubject()
     {
-        var trimmedName = NewSubjectName.Trim(); 
+        string trimmedName = NewSubjectName.Trim();
         if (string.IsNullOrWhiteSpace(trimmedName)
             || Subjects.Contains(trimmedName))
+        {
             return;
-        
+        }
+
         Subjects.Add(trimmedName);
         NewSubjectName = string.Empty;
     }
-    
+
     [ReactiveCommand]
     private void RemoveSubject()
     {
-        var trimmedName = SubjectNameToRemove.Trim();
+        string trimmedName = SubjectNameToRemove.Trim();
         if (string.IsNullOrWhiteSpace(trimmedName))
+        {
             return;
+        }
 
-        if (Subjects.Remove(trimmedName)) 
+        if (Subjects.Remove(trimmedName))
+        {
             SubjectNameToRemove = string.Empty;
+        }
     }
 }

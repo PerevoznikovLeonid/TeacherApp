@@ -6,11 +6,11 @@
         <Label Content="{Binding ElementName=Component, Path=Label, Mode=OneWay}"
                Target="{Binding ElementName=Input}"
                VerticalAlignment="Center"
-               Margin="4,0,8,0"/>
+               Margin="4,0,8,0" />
         <TextBox x:Name="Input"
                  Text="{Binding ElementName=Component, Path=Value, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                  PlaceholderText="{Binding ElementName=Component, Path=PlaceholderText, Mode=OneWay}"
                  IsReadOnly="{Binding ElementName=Component, Path=IsReadOnly}"
-                 Grid.Column="1"/>
+                 Grid.Column="1" />
     </Grid>
 </UserControl>

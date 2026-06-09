@@ -7,16 +7,13 @@ namespace TeacherApp.Services;
 
 public class JsonDataService(string filePath)
 {
-    private readonly JsonSerializerOptions _options = new()
-    {
-        WriteIndented = true
-    };
-    
+    private readonly JsonSerializerOptions _options = new() { WriteIndented = true };
+
     public void SaveData<T>(ObservableCollection<T> collection)
     {
         try
         {
-            var json = JsonSerializer.Serialize(collection, _options);
+            string json = JsonSerializer.Serialize(collection, _options);
             File.WriteAllText(filePath, json);
         }
         catch (Exception e)
@@ -34,8 +31,9 @@ public class JsonDataService(string filePath)
             {
                 return null;
             }
-            var json = File.ReadAllText(filePath);
-            var collection = JsonSerializer.Deserialize<ObservableCollection<T>>(json, _options);
+
+            string json = File.ReadAllText(filePath);
+            ObservableCollection<T>? collection = JsonSerializer.Deserialize<ObservableCollection<T>>(json, _options);
             return collection;
         }
         catch (Exception e)
