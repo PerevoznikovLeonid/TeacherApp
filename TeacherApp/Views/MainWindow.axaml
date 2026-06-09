@@ -1,0 +1,107 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:TeacherApp.ViewModels"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:c="clr-namespace:TeacherApp.Components"
+        xmlns:m="using:TeacherApp.Models"
+        mc:Ignorable="d" d:DesignWidth="900" d:DesignHeight="550"
+        x:Class="TeacherApp.Views.MainWindow"
+        x:DataType="vm:MainWindowViewModel"
+        Title="Преподаватели"
+        Background="{StaticResource BackgroundBrush}"
+        MinWidth="800" MinHeight="500">
+
+    <Design.DataContext>
+        <vm:MainWindowViewModel/>
+    </Design.DataContext>
+
+    <Window.Resources>
+        <DataTemplate x:Key="TemplateTeacher" DataType="{x:Type m:Teacher}">
+            <TextBlock>
+                <TextBlock.Text>
+                    <MultiBinding StringFormat="{}{0}: {1}">
+                        <Binding Path="ShortId"/>
+                        <Binding Path="FullName"/>
+                    </MultiBinding>
+                </TextBlock.Text>
+            </TextBlock>
+        </DataTemplate>
+    </Window.Resources>
+
+    <DockPanel LastChildFill="True">
+        <!-- Меню -->
+        <Menu DockPanel.Dock="Top" Background="{StaticResource PrimaryBrush}" Foreground="White">
+            <MenuItem Header="Преподаватели"/>
+        </Menu>
+
+        <Grid ColumnDefinitions="1.5*, 3*" Margin="12">
+            <!-- Блок списка преподавателей -->
+            <Border Background="{StaticResource SurfaceBrush}" CornerRadius="8" Margin="0,0,8,0">
+                <DockPanel>
+                    <TextBlock Text="Список преподавателей" FontWeight="Bold" FontSize="16"
+                               DockPanel.Dock="Top" Margin="12,12,12,8"/>
+                    <ListBox ItemsSource="{Binding Teachers, Mode=OneWay}"
+                             SelectionMode="Toggle"
+                             SelectedItem="{Binding SelectedTeacher, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                             ItemTemplate="{StaticResource TemplateTeacher}"
+                             Background="LightGray" BorderThickness="0"
+                             Margin="8,0,8,12"/>
+                </DockPanel>
+            </Border>
+
+            <!-- Карточка редактирования -->
+            <Border Grid.Column="1" Background="{StaticResource SurfaceBrush}" CornerRadius="8" Margin="8,0,0,0" Padding="16">
+                <DockPanel>
+                    <TextBlock Text="Редактирование преподавателя" FontWeight="Bold" FontSize="16"
+                               DockPanel.Dock="Top" Margin="0,12,0,16"/>
+
+                    <StackPanel DockPanel.Dock="Top">
+                        <c:InputComponent Label="ID" Value="{Binding Id, Mode=OneWay, UpdateSourceTrigger=PropertyChanged}" IsReadOnly="True" Margin="0,4"/>
+                        <c:InputComponent Label="Фамилия" Value="{Binding LastName, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" 
+                                          PlaceholderText="Введите фамилию" Margin="0,8"/>
+                        <c:InputComponent Label="Имя" Value="{Binding FirstName, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" 
+                                          PlaceholderText="Введите имя" Margin="0,8"/>
+
+                        <Label Content="Предметы" Margin="0,12,0,4" FontWeight="Bold"/>
+                        <Grid ColumnDefinitions="*, 2.5*" RowDefinitions="Auto, Auto, Auto">
+                            <Label Content="Список предметов" Grid.Row="0" Grid.Column="0"
+                                   VerticalAlignment="Top" Margin="0,4,0,0"/>
+                            <ListBox ItemsSource="{Binding Subjects, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Height="160"
+                                     BorderThickness="1" BorderBrush="#BDC3C7"
+                                     Grid.Row="0" Grid.Column="1" Margin="8,0,0,0"/>
+
+                            <Label Content="Добавить" Grid.Row="1" Grid.Column="0"
+                                   VerticalAlignment="Center"/>
+                            <StackPanel Orientation="Horizontal" Grid.Row="1" Grid.Column="1"
+                                        Margin="8,8,0,8">
+                                <TextBox Text="{Binding NewSubjectName, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" 
+                                         PlaceholderText="Название предмета" Width="180"/>
+                                <Button Content="Добавить" Command="{Binding AddSubjectCommand}"
+                                        Margin="8,0,0,0"/>
+                            </StackPanel>
+
+                            <Label Content="Удалить" Grid.Row="2" Grid.Column="0"
+                                   VerticalAlignment="Center"/>
+                            <StackPanel Orientation="Horizontal" Grid.Row="2" Grid.Column="1"
+                                        Margin="8,8,0,8">
+                                <TextBox Text="{Binding SubjectNameToRemove, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" 
+                                         PlaceholderText="Название предмета" Width="180"/>
+                                <Button Content="Удалить" Command="{Binding RemoveSubjectCommand}"
+                                        Classes="danger" Margin="8,0,0,0"/>
+                            </StackPanel>
+                        </Grid>
+                    </StackPanel>
+
+                    <Border DockPanel.Dock="Bottom" Height="1" Background="#ECF0F1" Margin="0,16,0,8"/>
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right"
+                                DockPanel.Dock="Bottom" Margin="0,8,0,16">
+                        <Button Content="Очистить" Command="{Binding ClearCommand}" Classes="warning"/>
+                        <Button Content="Удалить" Command="{Binding DeleteCommand}" Classes="danger"/>
+                        <Button Content="Сохранить" Command="{Binding SaveCommand}" Classes="success"/>
+                    </StackPanel>
+                </DockPanel>
+            </Border>
+        </Grid>
+    </DockPanel>
+</Window>

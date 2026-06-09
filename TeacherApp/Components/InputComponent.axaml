@@ -1,0 +1,16 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="TeacherApp.Components.InputComponent"
+             x:Name="Component">
+    <Grid ColumnDefinitions="Auto, *" RowDefinitions="Auto">
+        <Label Content="{Binding ElementName=Component, Path=Label, Mode=OneWay}"
+               Target="{Binding ElementName=Input}"
+               VerticalAlignment="Center"
+               Margin="4,0,8,0"/>
+        <TextBox x:Name="Input"
+                 Text="{Binding ElementName=Component, Path=Value, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                 PlaceholderText="{Binding ElementName=Component, Path=PlaceholderText, Mode=OneWay}"
+                 IsReadOnly="{Binding ElementName=Component, Path=IsReadOnly}"
+                 Grid.Column="1"/>
+    </Grid>
+</UserControl>
