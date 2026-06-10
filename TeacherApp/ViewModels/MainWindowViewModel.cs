@@ -15,19 +15,21 @@ public partial class MainWindowViewModel : ViewModelBase
 {
     private readonly IObservable<bool> _canClear;
     private readonly IObservable<bool> _canDelete;
-
     private readonly IObservable<bool> _canSave;
+    private readonly IObservable<bool> _canClearSubject;
+    private readonly IObservable<bool> _canSaveSubject;
+    private readonly IObservable<bool> _canDeleteSubject;
 
     private readonly JsonDataService _jsonDataService = new("teachers.json");
     [Reactive] private string? _firstName;
     [Reactive] private Guid? _id;
     [Reactive] private string? _lastName;
 
-    [Reactive] private string _newSubjectName = string.Empty;
-
     [Reactive] private Teacher? _selectedTeacher;
-    [Reactive] private string _subjectNameToRemove = string.Empty;
     [Reactive] private ObservableCollection<string> _subjects = [];
+    
+    [Reactive] private string? _selectedSubject;
+    [Reactive] private string _editSubjectName = string.Empty;
 
     public MainWindowViewModel()
     {
@@ -48,6 +50,9 @@ public partial class MainWindowViewModel : ViewModelBase
                     Subjects.Add(subject);
                 }
             });
+        
+        this.WhenAnyValue(p => p.SelectedSubject)
+            .Subscribe(subj => EditSubjectName = subj ?? string.Empty);
 
         ObservableCollection<Teacher>? collection = _jsonDataService.LoadData<Teacher>();
 
@@ -65,9 +70,9 @@ public partial class MainWindowViewModel : ViewModelBase
             .Switch();
 
         _canClear = this.WhenAnyValue(
-                p => p.Id,
-                p => p.LastName,
-                p => p.FirstName,
+                t => t.Id,
+                t => t.LastName,
+                t => t.FirstName,
                 (id, lastName, firstName) => new { id, lastName, firstName })
             .CombineLatest(subjectsCount, (fields, count) =>
                 fields.id is not null ||
@@ -76,17 +81,28 @@ public partial class MainWindowViewModel : ViewModelBase
                 count > 0);
 
         _canSave = this.WhenAnyValue(
-                p => p.LastName,
-                p => p.FirstName,
+                t => t.LastName,
+                t => t.FirstName,
                 (lastName, firstName) => new { lastName, firstName })
             .CombineLatest(subjectsCount, (names, count) =>
                 !string.IsNullOrWhiteSpace(names.lastName) &&
-                !string.IsNullOrEmpty(names.firstName) &&
+                !string.IsNullOrWhiteSpace(names.firstName) &&
                 count > 0);
 
-        _canDelete = this.WhenAnyValue(p => p.SelectedTeacher)
-            .Select(sp => sp is not null);
-        Console.WriteLine($"Teachers count after load: {Teachers.Count}");
+        _canDelete = this.WhenAnyValue(t => t.SelectedTeacher)
+            .Select(st => st is not null);
+
+        _canClearSubject = this.WhenAnyValue(s => s.EditSubjectName)
+            .Select(esn => !string.IsNullOrWhiteSpace(esn));
+        
+        _canSaveSubject = this.WhenAnyValue(
+                s => s.EditSubjectName,
+                 s => s.Subjects,
+                (editSubjectName, subjects) => !string.IsNullOrWhiteSpace(editSubjectName) &&
+                                               !subjects.Contains(editSubjectName));
+        
+        _canDeleteSubject = this.WhenAnyValue(s => s.SelectedSubject)
+            .Select(subj => subj is not null);
     }
 
     public ObservableCollection<Teacher> Teachers { get; }
@@ -104,8 +120,6 @@ public partial class MainWindowViewModel : ViewModelBase
         FirstName = null;
         Subjects.Clear();
         SelectedTeacher = null;
-        NewSubjectName = string.Empty;
-        SubjectNameToRemove = string.Empty;
     }
 
     [ReactiveCommand(CanExecute = nameof(_canDelete))]
@@ -139,32 +153,40 @@ public partial class MainWindowViewModel : ViewModelBase
         }
     }
 
-    [ReactiveCommand]
-    private void AddSubject()
+    [ReactiveCommand(CanExecute = nameof(_canClearSubject))]
+    private void ClearSubject()
     {
-        string trimmedName = NewSubjectName.Trim();
-        if (string.IsNullOrWhiteSpace(trimmedName)
-            || Subjects.Contains(trimmedName))
-        {
-            return;
-        }
-
-        Subjects.Add(trimmedName);
-        NewSubjectName = string.Empty;
+        SelectedSubject = null;
+        EditSubjectName = string.Empty;
     }
 
-    [ReactiveCommand]
-    private void RemoveSubject()
+    [ReactiveCommand(CanExecute = nameof(_canSaveSubject))]
+    private void SaveSubject()
     {
-        string trimmedName = SubjectNameToRemove.Trim();
-        if (string.IsNullOrWhiteSpace(trimmedName))
+        var newName = EditSubjectName.Trim();
+
+        if (SelectedSubject is not null)
         {
-            return;
+            var index = Subjects.IndexOf(SelectedSubject);
+            if (index < 0)
+            {
+                return;
+            }
+
+            Subjects[index] = newName;
+        }
+        else
+        {
+            Subjects.Add(newName);
         }
 
-        if (Subjects.Remove(trimmedName))
-        {
-            SubjectNameToRemove = string.Empty;
-        }
+        SelectedSubject = newName;
+    }
+
+    [ReactiveCommand(CanExecute = nameof(_canDeleteSubject))]
+    private void DeleteSubject()
+    {
+        Subjects.Remove(SelectedSubject!);
+        ClearSubject();
     }
 }

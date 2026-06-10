@@ -73,30 +73,18 @@
                             <Label Content="Список предметов" Grid.Row="0" Grid.Column="0"
                                    VerticalAlignment="Top" Margin="0,4,0,0" />
                             <ListBox ItemsSource="{Binding Subjects, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                     SelectionMode="Toggle"
+                                     SelectedItem="{Binding SelectedSubject, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                                      Height="160"
                                      BorderThickness="1" BorderBrush="#BDC3C7"
                                      Grid.Row="0" Grid.Column="1" Margin="8,0,0,0" />
 
-                            <Label Content="Добавить" Grid.Row="1" Grid.Column="0"
-                                   VerticalAlignment="Center" />
-                            <StackPanel Orientation="Horizontal" Grid.Row="1" Grid.Column="1"
-                                        Margin="8,8,0,8">
-                                <TextBox
-                                    Text="{Binding NewSubjectName, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                                    PlaceholderText="Название предмета" Width="180" />
-                                <Button Content="Добавить" Command="{Binding AddSubjectCommand}"
-                                        Margin="8,0,0,0" />
-                            </StackPanel>
-
-                            <Label Content="Удалить" Grid.Row="2" Grid.Column="0"
-                                   VerticalAlignment="Center" />
-                            <StackPanel Orientation="Horizontal" Grid.Row="2" Grid.Column="1"
-                                        Margin="8,8,0,8">
-                                <TextBox
-                                    Text="{Binding SubjectNameToRemove, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                                    PlaceholderText="Название предмета" Width="180" />
-                                <Button Content="Удалить" Command="{Binding RemoveSubjectCommand}"
-                                        Classes="danger" Margin="8,0,0,0" />
+                            <StackPanel Orientation="Horizontal" Grid.Row="1" Grid.Column="1" Margin="8,8,0,8">
+                                <TextBox Text="{Binding EditSubjectName, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                         PlaceholderText="Название предмета" Width="180"/>
+                                <Button Content="Сохранить" Command="{Binding SaveSubjectCommand}" Margin="8,0,0,0"/>
+                                <Button Content="Удалить" Command="{Binding DeleteSubjectCommand}" Classes="danger" Margin="4,0,0,0"/>
+                                <Button Content="Очистить" Command="{Binding ClearSubjectCommand}" Classes="warning" Margin="4,0,0,0"/>
                             </StackPanel>
                         </Grid>
                     </StackPanel>
