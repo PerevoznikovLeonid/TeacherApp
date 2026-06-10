@@ -29,7 +29,7 @@
         </DataTemplate>
     </Window.Resources>
 
-    <DockPanel LastChildFill="True">
+    <DockPanel x:Name="RootDockPanel" LastChildFill="True">
         <!-- Меню -->
         <Menu DockPanel.Dock="Top" Background="{StaticResource PrimaryBrush}" Foreground="White">
             <MenuItem Header="Преподаватели" />
@@ -96,6 +96,41 @@
                         <Button Content="Удалить" Command="{Binding DeleteCommand}" Classes="danger" />
                         <Button Content="Сохранить" Command="{Binding SaveCommand}" Classes="success" />
                     </StackPanel>
+                    
+                    <!-- <Border DockPanel.Dock="Bottom" -->
+                    <!--         HorizontalAlignment="Right" -->
+                    <!--         VerticalAlignment="Bottom" -->
+                    <!--         Margin="0,0,20,20" -->
+                    <!--         Padding="12,8" -->
+                    <!--         Background="{StaticResource SuccessBrush}" -->
+                    <!--         CornerRadius="8" -->
+                    <!--         Opacity="0.9" -->
+                    <!--         IsVisible="{Binding IsNotificationVisible}"> -->
+                    <!--     <StackPanel Orientation="Horizontal" Spacing="8"> -->
+                    <!--         <TextBlock Text="✓" FontSize="16" VerticalAlignment="Center" -->
+                    <!--                    Foreground="White"/> -->
+                    <!--         <TextBlock Text="{Binding NotificationText}"  -->
+                    <!--                    Foreground="White" -->
+                    <!--                    VerticalAlignment="Center"/> -->
+                    <!--     </StackPanel> -->
+                    <!-- </Border> -->
+                    
+                    <Popup IsOpen="{Binding IsNotificationVisible}"
+                           PlacementTarget="{Binding ElementName=RootDockPanel}"
+                           Placement="AnchorAndGravity"
+                           PlacementAnchor="BottomRight"
+                           PlacementGravity="TopLeft"
+                           VerticalOffset="-10"
+                           HorizontalOffset="-10">
+                        <Border Background="{StaticResource SuccessBrush}"
+                                CornerRadius="8"
+                                Padding="12,8">
+                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                <TextBlock Text="✓" FontSize="16" Foreground="White"/>
+                                <TextBlock Text="{Binding NotificationText}" Foreground="White"/>
+                            </StackPanel>
+                        </Border>
+                    </Popup>
                 </DockPanel>
             </Border>
         </Grid>

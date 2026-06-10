@@ -1,6 +1,8 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Collections.Specialized;
+using System.Linq;
 using System.Reactive.Linq;
 
 using ReactiveUI;
@@ -21,16 +23,33 @@ public partial class MainWindowViewModel : ViewModelBase
     private readonly IObservable<bool> _canDeleteSubject;
 
     private readonly JsonDataService _jsonDataService = new("teachers.json");
+    
     [Reactive] private string? _firstName;
     [Reactive] private Guid? _id;
     [Reactive] private string? _lastName;
-
     [Reactive] private Teacher? _selectedTeacher;
     [Reactive] private ObservableCollection<string> _subjects = [];
-    
     [Reactive] private string? _selectedSubject;
     [Reactive] private string _editSubjectName = string.Empty;
+    [Reactive] private string _notificationText = string.Empty;
+    [Reactive] private bool _isNotificationVisible;
+    [Reactive] private Teacher? _originalTeacher;
 
+    private IDisposable? _notificationTimer;
+    
+    private IObservable<bool> HasChanges =>
+        this.WhenAnyValue(x => x.LastName, x => x.FirstName, x => x.Subjects)
+            .Select(_ =>
+            {
+                if (_originalTeacher is null)
+                    return !string.IsNullOrWhiteSpace(LastName) ||
+                           !string.IsNullOrWhiteSpace(FirstName) ||
+                           Subjects.Count > 0;
+                return LastName != _originalTeacher.LastName ||
+                       FirstName != _originalTeacher.FirstName ||
+                       !Subjects.SequenceEqual(_originalTeacher.Subjects);
+            });
+    
     public MainWindowViewModel()
     {
         this.WhenAnyValue(p => p.SelectedTeacher)
@@ -40,15 +59,21 @@ public partial class MainWindowViewModel : ViewModelBase
                 LastName = st?.LastName;
                 FirstName = st?.FirstName;
                 Subjects.Clear();
-                if (st?.Subjects == null)
+                if (st?.Subjects != null)
                 {
-                    return;
+                    foreach (string subject in st.Subjects)
+                        Subjects.Add(subject);
                 }
-
-                foreach (string subject in st.Subjects)
-                {
-                    Subjects.Add(subject);
-                }
+                
+                OriginalTeacher = st is not null
+                    ? new Teacher
+                    {
+                        Id = st.Id,
+                        LastName = st.LastName,
+                        FirstName = st.FirstName,
+                        Subjects = new ObservableCollection<string>(st.Subjects)
+                    }
+                    : null;
             });
         
         this.WhenAnyValue(p => p.SelectedSubject)
@@ -60,14 +85,30 @@ public partial class MainWindowViewModel : ViewModelBase
             ? new ObservableCollection<Teacher>(collection)
             : [];
 
-        IObservable<int> subjectsCount = this.WhenAnyValue(x => x.Subjects)
-            .Select(subjects => Observable
-                .FromEventPattern<NotifyCollectionChangedEventHandler, NotifyCollectionChangedEventArgs>(
+        IObservable<IList<string>> subjectsSequence = this.WhenAnyValue(x => x.Subjects)
+            .Select(subjects => Observable.FromEventPattern<NotifyCollectionChangedEventHandler, NotifyCollectionChangedEventArgs>(
                     h => subjects.CollectionChanged += h,
                     h => subjects.CollectionChanged -= h)
-                .Select(_ => subjects.Count)
-                .StartWith(subjects.Count))
+                .Select(_ => subjects.ToList())
+                .StartWith(subjects.ToList()))
             .Switch();
+        
+        IObservable<int> subjectsCount = subjectsSequence.Select(list => list.Count);
+        
+        IObservable<bool> hasChanges = this.WhenAnyValue(
+                x => x.LastName,
+                x => x.FirstName,
+                x => x.OriginalTeacher)
+            .CombineLatest(subjectsSequence, (_, currentSubjects) =>
+            {
+                if (OriginalTeacher is null)
+                    return !string.IsNullOrWhiteSpace(LastName) ||
+                           !string.IsNullOrWhiteSpace(FirstName) ||
+                           currentSubjects.Count > 0;
+                return LastName != OriginalTeacher.LastName ||
+                       FirstName != OriginalTeacher.FirstName ||
+                       !currentSubjects.SequenceEqual(OriginalTeacher.Subjects);
+            });
 
         _canClear = this.WhenAnyValue(
                 t => t.Id,
@@ -80,14 +121,15 @@ public partial class MainWindowViewModel : ViewModelBase
                 !string.IsNullOrWhiteSpace(fields.firstName) ||
                 count > 0);
 
-        _canSave = this.WhenAnyValue(
-                t => t.LastName,
-                t => t.FirstName,
-                (lastName, firstName) => new { lastName, firstName })
-            .CombineLatest(subjectsCount, (names, count) =>
-                !string.IsNullOrWhiteSpace(names.lastName) &&
-                !string.IsNullOrWhiteSpace(names.firstName) &&
-                count > 0);
+        _canSave = hasChanges.CombineLatest(
+            this.WhenAnyValue(
+                t => t.LastName, 
+                t => t.FirstName),
+            subjectsCount,
+            (hasChangesL, _, count) => hasChangesL &&
+                                       !string.IsNullOrWhiteSpace(LastName) &&
+                                       !string.IsNullOrWhiteSpace(FirstName) &&
+                                       count > 0);
 
         _canDelete = this.WhenAnyValue(t => t.SelectedTeacher)
             .Select(st => st is not null);
@@ -111,6 +153,22 @@ public partial class MainWindowViewModel : ViewModelBase
     {
         _jsonDataService.SaveData(Teachers);
     }
+    
+    private void ShowNotification(string message)
+    {
+        NotificationText = message;
+        
+        _notificationTimer?.Dispose();
+    
+        IsNotificationVisible = true;
+    
+        _notificationTimer = Observable.Timer(TimeSpan.FromSeconds(3))
+            .Subscribe(_ => 
+            {
+                IsNotificationVisible = false;
+                _notificationTimer = null;
+            });
+    }
 
     [ReactiveCommand(CanExecute = nameof(_canClear))]
     private void Clear()
@@ -120,6 +178,9 @@ public partial class MainWindowViewModel : ViewModelBase
         FirstName = null;
         Subjects.Clear();
         SelectedTeacher = null;
+        SelectedSubject = null;
+        EditSubjectName = string.Empty;
+        OriginalTeacher = null;
     }
 
     [ReactiveCommand(CanExecute = nameof(_canDelete))]
@@ -151,6 +212,17 @@ public partial class MainWindowViewModel : ViewModelBase
             Teachers.Add(newTeacher);
             SelectedTeacher = newTeacher;
         }
+        
+        OriginalTeacher = new Teacher
+        {
+            Id = SelectedTeacher!.Id,
+            LastName = SelectedTeacher.LastName,
+            FirstName = SelectedTeacher.FirstName,
+            Subjects = new ObservableCollection<string>(SelectedTeacher.Subjects)
+        };
+        
+        SaveTeachersToFile();
+        ShowNotification("Сохранено");
     }
 
     [ReactiveCommand(CanExecute = nameof(_canClearSubject))]
